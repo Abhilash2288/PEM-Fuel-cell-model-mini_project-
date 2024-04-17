@@ -1,0 +1,70 @@
+% Constants and parameters
+R = 8.314;                  % Universal gas constant (J/mol*K)
+T = 343;                    % Temperature (K)
+F = 96485;                  % Faraday's constant (C/mol)
+P_total = 101325;           % Total pressure (Pa)
+A = 0.01;                  % Active area (m^2)
+epsilon = 0.8;              % Porosity
+d = 0.0002;                 % Thickness of membrane (m)
+sigma = 0.5;                % Proton conductivity (S/m)
+I = 10;                     % Applied current (A)
+
+% Constants for electrochemical reactions
+E0 = 1.23;                  % Standard potential (V)
+n = 2;                      % Number of electrons transferred
+i_0 = 0.001;                % Exchange current density (A/m^2)
+
+% Flow rate ranges
+flow_rate_values = linspace(0.001, 1, 100);  % Flow rate values (mol/s)
+
+% Initialize result arrays
+V_H2_vary = zeros(length(flow_rate_values), 1);
+V_O2_vary = zeros(length(flow_rate_values), 1);
+
+% Constant flow rates
+constant_O2 = 1.25;     % Fixed oxygen flow rate (mol/s)
+constant_H2 = 1.25;     % Fixed hydrogen flow rate (mol/s)
+
+% Calculate voltages for varying H2 and O2 flow rates
+for i = 1:length(flow_rate_values)
+    % Varying H2 flow rate
+    F_H2_curr = flow_rate_values(i);
+    PH2 = P_total * F_H2_curr / (F_H2_curr + constant_O2);
+    PO2 = P_total * constant_O2 / (F_H2_curr + constant_O2);
+    E_Nernst = E0 + (R * T / (n * F)) * log(PH2 / sqrt(PO2));
+    
+    iL = sqrt(PH2) * PO2^0.25 * (i_0 * A);
+    eta_act = (R * T / (n * F)) * log(I / iL);
+    
+    R_ohm = d / (sigma * A * epsilon);
+    iL_conc = iL * exp(I / (2 * F * sigma * A * d));
+    eta_conc = (R * T / (2 * n * F)) * log(iL_conc / iL);
+    
+    V_H2_vary(i) = E_Nernst - eta_act - eta_conc - I * R_ohm;
+
+    % Varying O2 flow rate
+    F_O2_curr = flow_rate_values(i);
+    PH2 = P_total * constant_H2 / (constant_H2 + F_O2_curr);
+    PO2 = P_total * F_O2_curr / (constant_H2 + F_O2_curr);
+    E_Nernst = E0 + (R * T / (n * F)) * log(PH2 / sqrt(PO2));
+    
+    iL = sqrt(PH2) * PO2^0.25 * (i_0 * A);
+    eta_act = (R * T / (n * F)) * log(I / iL);
+    
+    R_ohm = d / (sigma * A * epsilon);
+    iL_conc = iL * exp(I / (2 * F * sigma * A * d));
+    eta_conc = (R * T / (2 * n * F)) * log(iL_conc / iL);
+    
+    V_O2_vary(i) = E_Nernst - eta_act - eta_conc - I * R_ohm;
+end
+
+% Plot for varying H2 and O2 at constant rates on the same graph
+figure;
+plot(flow_rate_values, V_H2_vary, 'b-', 'LineWidth', 2); hold on;
+plot(flow_rate_values, V_O2_vary, 'r--', 'LineWidth', 2);
+xlabel('Flow Rate (mol/s)');
+ylabel('Cell Voltage (V)');
+title('Cell Voltage vs. Flow Rate');
+legend({'Varying H2 (O2 = 1.25 mol/s)', 'Varying O2 (H2 = 1.25 mol/s)'}, 'Location', 'Best');
+hold off;
+
